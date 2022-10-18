@@ -15,6 +15,8 @@ I created this to streamline the process of generating a snailplot.
 Currently, you have to use a perl script to generate summary statistics, then set up an HTTP server to load the interactive plot.
 This merges the two steps and generates a static plot suitable for quick exploration, or publication.
 
+Currently a very early version!
+
 ![example plot](plot.png)
 
 
