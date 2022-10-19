@@ -1,12 +1,13 @@
 # pysnailplot
 
-<img src="https://img.shields.io/badge/version-0.1-orange" />
+<img src="https://img.shields.io/badge/version-0.2-orange" />
 
 - [x] Plots scaffolds sorted by size
 - [x] Provides and visualises basic assembly statistics (N50, N90, etc)
 - [x] Calculates and plots scaffold GC content
-- [ ] Calculates and plots N content
-- [ ] Integrates optional BUSCO scores
+- [x] Calculates and plots N content
+- [x] Integrates optional BUSCO scores
+- [x] Can integrate kmer completeness value
 - [ ] Correctly differentiates between contigs and scaffolds
 
 A python program to generate blobtoolkit "snail plots". Simply call on the fasta file of your assembly and generate a snail in seconds!
