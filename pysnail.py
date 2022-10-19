@@ -45,7 +45,6 @@ def read_fasta(filepath):
     df["angle"] = df["angle"].cumsum()
     df["cumlength"] = df["length"].cumsum()
 
-    print(df)
     return df, total_size, largest
 
 
@@ -138,13 +137,15 @@ def make_plot(args, df, total_size, largest, n50, n90):
     ax.plot(theta, [120] * len(theta), color="black")
     ax.plot([offset, offset], [1, 100], color="black")
 
+    ax.plot(0.01, 140, color = None) # ghost to maintain plot size
+
     for i in np.arange(0, 360, 7.2):
         ax.plot([offset + np.radians(i), offset + np.radians(i)],
                 [100, 102], color="black")
         ax.plot([offset + np.radians(i), offset + np.radians(i)],
                 [118, 120], color="black")
 
-    if args.busco != "Nothing":
+    if args.busco is not None:
         
         busco_data = parse_busco(args.busco)
 
@@ -199,7 +200,7 @@ def make_plot(args, df, total_size, largest, n50, n90):
         loc = 4,
         frameon = False)
 
-    if True:
+    if args.kmer is not None:
         # kmer completeness
         ax.bar(
             x = 0.01*np.pi,
@@ -213,7 +214,7 @@ def make_plot(args, df, total_size, largest, n50, n90):
             x = 0.01*np.pi,
             align = "edge",
             height = 15,
-            width = 0.85 * 0.2 * np.pi,
+            width = args.kmer * 0.2 * np.pi,
             bottom = optional_offset,
             color = "#985f99")
         
@@ -225,6 +226,11 @@ def make_plot(args, df, total_size, largest, n50, n90):
             bottom = optional_offset,
             fill = False,
             edgecolor = "black")
+
+        kmer_legend = plt.legend([kmer_bar], [f" K* ({args.kmer})"],
+        title = "Completeness",
+        loc = 1,
+        frameon = False)
 
     # apply percentage labels to GC axis
     for i in range(0, 360, 36):
@@ -254,14 +260,10 @@ def make_plot(args, df, total_size, largest, n50, n90):
 
     ax = plt.gca().add_artist(bases_legend)
 
-    kmer_legend = plt.legend([kmer_bar], [f" K* (85%)"],
-        title = "Completeness",
-        loc = 1,
-        frameon = False)
+    if args.kmer is not None:
+        ax = plt.gca().add_artist(kmer_legend)
 
-    ax = plt.gca().add_artist(kmer_legend)
-
-    if args.busco != "Nothing":
+    if args.busco is not None:
         ax = plt.gca().add_artist(busco_legend)
 
     plt.savefig(args.outfile)
@@ -280,18 +282,29 @@ def parse_busco(busco_json):
     data = json.loads(infile.read())
     return data
 
+def restricted_float(x):
+    try:
+        x = float(x)
+    except ValueError:
+        raise argparse.ArgumentTypeError("%r not a floating-point literal" % (x,))
+
+    if x < 0.0 or x > 1.0:
+        raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]"%(x,))
+    return x
+
 
 def main(arguments):
 
     parser = argparse.ArgumentParser(
-        description=__doc__,
+        description = "A simple script to generate snail plots from fasta files",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('infile', help="Assembly fasta file for plot")
     parser.add_argument('-o', '--outfile',
                         help="Output plot file", default="plot.png")
     parser.add_argument('-t', '--title', help="Title of plot",
                         default="Assembly statistics")
-    parser.add_argument("-b", "--busco", default = "Nothing", help = "BUSCO json file for score plotting")
+    parser.add_argument("-b", "--busco", help = "BUSCO json file for score plotting")
+    parser.add_argument("-k", "--kmer", type = restricted_float, help = "K* completeness value")
 
     args = parser.parse_args(arguments)
 
