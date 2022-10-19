@@ -25,8 +25,8 @@ def read_fasta(filepath):
 
     df = pd.DataFrame(data, columns=["length", "GC", "N"])
 
-    df = df.sort_values("length", ascending=False)
-    df = df.reset_index(drop=True)
+    df = df.sort_values("length", ascending = False)
+    df = df.reset_index(drop = True)
 
     gaps = []
     for i in range(len(df["length"])):
@@ -52,10 +52,10 @@ def assembly_stats(df, assembly_size):
     n50_sum = 0
     n90_sum = 0
     for length in df["length"]:
-        if n50_sum < assembly_size*0.5:
+        if n50_sum < assembly_size * 0.5:
             n50 = length
             n50_sum += n50
-        if n90_sum < assembly_size*0.9:
+        if n90_sum < assembly_size * 0.9:
             n90 = length
             n90_sum += n90
 
@@ -82,6 +82,8 @@ def make_plot(args, df, total_size, largest, n50, n90):
         r_bg.append(100)
         r_gc_bg.append(120)
 
+    gcs = [] # used for calculating avg gc
+    ns = [] # and for n
     pos = 1
     for row in df.iterrows():
         for i in range(pos, int(row[1]["cumlength"]), int(stepsize)):
@@ -89,11 +91,17 @@ def make_plot(args, df, total_size, largest, n50, n90):
             r.append(100*((largest - row[1]["length"])/largest))
             n_r.append(100 + row[1]["N"]*0.2)
             gc_r.append(100 + row[1]["GC"]*0.2 + row[1]["N"]*0.2)
+            gcs.append(row[1]["GC"])
+            ns.append(row[1]["N"])
         pos += int(row[1]["length"])
+    
+    mean_GC = (sum(gcs)/len(gcs))
+    mean_N = (sum(ns)/len(ns))
+    mean_AT = 100 - mean_GC - mean_N
 
     plt.figure(figsize=(10, 10))
 
-    ax = plt.subplot(111, polar=True)
+    ax = plt.subplot(111, polar = True)
 
     plt.axis('off')
 
@@ -106,30 +114,31 @@ def make_plot(args, df, total_size, largest, n50, n90):
 
     gc_bar = ax.bar(0, 0, color = "#1f78b4")
     at_bar = ax.bar(0, 0, color = "#a6cee3")
-    scaffolds_bar = ax.bar(0, 0, color="#bbbbbb")
+    n_bar = ax.bar(0, 0, color = "#dddddd")
+    scaffolds_bar = ax.bar(0, 0, color = "#bbbbbb")
 
     # plot the largest scaffold
     largest_bar = ax.bar(
-        x=bar_offset,
-        height=df["length_rescale"][0],
-        width=df["width"][0],
-        bottom=100 - df["length_rescale"][0],
+        x = bar_offset,
+        height = df["length_rescale"][0],
+        width = df["width"][0],
+        bottom = 100 - df["length_rescale"][0],
         color="#e31a1c")
 
     # plot the n50 bar
     n50_bar = ax.bar(
-        x=bar_offset + 2*np.pi*0.25 - max(df["width"])/2,
-        height=100*(n50/largest),
-        width=2*np.pi*0.5,
-        bottom=100*(largest - n50)/largest,
+        x = bar_offset + 2*np.pi*0.25 - max(df["width"])/2,
+        height = 100*(n50/largest),
+        width = 2*np.pi*0.5,
+        bottom = 100*(largest - n50)/largest,
         color="#ff7f00")
 
     # plot the n90 bar
     n90_bar = ax.bar(
-        x=bar_offset + 2*np.pi*0.45 - max(df["width"])/2,
-        height=100*(n90/largest),
-        width=2*np.pi*0.9,
-        bottom=100*(largest-n90)/largest,
+        x = bar_offset + 2*np.pi*0.45 - max(df["width"])/2,
+        height = 100*(n90/largest),
+        width = 2*np.pi*0.9,
+        bottom = 100*(largest-n90)/largest,
         color="#fdbf6f")
 
     # various outlines added to plot
@@ -235,25 +244,28 @@ def make_plot(args, df, total_size, largest, n50, n90):
     # apply percentage labels to GC axis
     for i in range(0, 360, 36):
         ax.text(offset + np.radians(i), 112,
-                f"{int(100*(i/360))}%", rotation=i, ha="center", va="center", fontsize=12)
+                f"{int(100*(i/360))}%", rotation = i, ha = "center", va = "center", fontsize = 12)
         ax.text(offset + np.radians(i), 125,
                 f"{human_readable(total_size*(i/360))}", rotation = i, ha = "center", va = "center", fontsize = 10)
 
-    plt.title(args.title, fontsize=20)
+    plt.title(args.title, fontsize = 20)
 
     stats_legend = plt.legend([scaffolds_bar, largest_bar, n50_bar, n90_bar], [
         f"Scaffold length (total {human_readable(total_size)})",
         f"Longest scaffold ({human_readable(largest)})",
         f"N50 length ({human_readable(n50)})",
         f"N90 length ({human_readable(n90)})"],
-        loc=2,
-        frameon=False)
+        loc = 2,
+        frameon = False)
 
     ax = plt.gca().add_artist(stats_legend)
 
-    bases_legend = plt.legend([gc_bar, at_bar], [
-        f"GC (45.3%)",
-        f"AT (54.7%)"],
+    print(mean_GC, mean_N, mean_AT)
+
+    bases_legend = plt.legend([gc_bar, at_bar, n_bar], [
+        f"GC ({round(mean_GC, 1)}%)",
+        f"AT ({round(mean_AT, 1)}%)",
+        f"N ({round(mean_N, 1)}%)"],
         title = "Base composition",
         loc = 3,
         frameon = False)
@@ -310,6 +322,8 @@ def main(arguments):
 
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Hello! Loading fasta...")
     df, assembly_size, largest_scaffold = read_fasta(args.infile)
+
+
 
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Total assembly size: {human_readable(assembly_size)}")
 
