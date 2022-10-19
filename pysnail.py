@@ -7,6 +7,7 @@ import sys
 import argparse
 import numpy as np
 from datetime import datetime
+import json
 
 
 def read_fasta(filepath):
@@ -72,10 +73,6 @@ def make_plot(args, df, total_size, largest, n50, n90):
     r_bg = [] # for background of scaffolds
     r_gc_bg = [] # gc background (ends up being AT)
     optional_offset = 135
-
-    # temp
-    BUSCO_SCORES = (70, 10, 12)
-    
 
     stepsize = total_size * 0.001 # to make sure plot doesn't degrade at low total sizes
 
@@ -147,8 +144,15 @@ def make_plot(args, df, total_size, largest, n50, n90):
         ax.plot([offset + np.radians(i), offset + np.radians(i)],
                 [118, 120], color="black")
 
-    if True:
-        # BUSCO optional bar plot
+    if args.busco != "Nothing":
+        
+        busco_data = parse_busco(args.busco)
+
+        lineage = busco_data["lineage_dataset"]["name"]
+        busco_complete = busco_data["results"]["Complete"]
+        busco_duplicate = busco_data["results"]["Multi copy"]
+        busco_fragment = busco_data["results"]["Fragmented"]
+
         ax.bar(
             x = 1.6 * np.pi,
             align = "edge",
@@ -160,21 +164,21 @@ def make_plot(args, df, total_size, largest, n50, n90):
         complete_bar = ax.bar(x = 1.6 * np.pi,
         align = "edge",
         height = 15,
-        width = BUSCO_SCORES[0]/100 * 0.4 * np.pi,
+        width = busco_complete/100 * 0.4 * np.pi,
         bottom = optional_offset,
         color = "#33a02c")
 
         duplicated_bar = ax.bar(x = 1.6 * np.pi,
         align = "edge",
         height = 15,
-        width = BUSCO_SCORES[1]/100 * 0.4 * np.pi,
+        width = busco_duplicate/100 * 0.4 * np.pi,
         bottom = optional_offset,
         color = "#236c1e")
 
-        fragmented_bar = ax.bar(x = 1.6 * np.pi + (BUSCO_SCORES[0]/100 * 0.4 * np.pi), # offset by size of complete
+        fragmented_bar = ax.bar(x = 1.6 * np.pi + (busco_complete/100 * 0.4 * np.pi), # offset by size of complete
         align = "edge",
         height = 15,
-        width = BUSCO_SCORES[2]/100 * 0.4 * np.pi,
+        width = busco_fragment/100 * 0.4 * np.pi,
         bottom = optional_offset,
         color = "#b2df8a")
 
@@ -186,6 +190,14 @@ def make_plot(args, df, total_size, largest, n50, n90):
             bottom = optional_offset,
             fill = False,
             edgecolor = "black")
+
+        busco_legend = plt.legend([complete_bar, duplicated_bar, fragmented_bar], [
+        f"Complete ({busco_complete}%)",
+        f"Duplicated ({busco_duplicate}%)",
+        f"Fragmented ({busco_fragment}%)"],
+        title = f"BUSCO {lineage}",
+        loc = 4,
+        frameon = False)
 
     if True:
         # kmer completeness
@@ -233,16 +245,6 @@ def make_plot(args, df, total_size, largest, n50, n90):
 
     ax = plt.gca().add_artist(stats_legend)
 
-    busco_legend = plt.legend([complete_bar, duplicated_bar, fragmented_bar], [
-        f"Complete ({BUSCO_SCORES[0]}%)",
-        f"Duplicated ({BUSCO_SCORES[1]}%)",
-        f"Fragmented ({BUSCO_SCORES[2]}%)"],
-        title = "BUSCO",
-        loc = 4,
-        frameon = False)
-
-    ax = plt.gca().add_artist(busco_legend)
-
     bases_legend = plt.legend([gc_bar, at_bar], [
         f"GC (45.3%)",
         f"AT (54.7%)"],
@@ -259,6 +261,9 @@ def make_plot(args, df, total_size, largest, n50, n90):
 
     ax = plt.gca().add_artist(kmer_legend)
 
+    if args.busco != "Nothing":
+        ax = plt.gca().add_artist(busco_legend)
+
     plt.savefig(args.outfile)
 
 
@@ -269,6 +274,11 @@ def human_readable(base_length):
         base_length = base_length / 1000
         i += 1
     return (f"{round(base_length, 1)}{units[i]}")
+
+def parse_busco(busco_json):
+    infile = open(busco_json, "r")
+    data = json.loads(infile.read())
+    return data
 
 
 def main(arguments):
@@ -281,6 +291,7 @@ def main(arguments):
                         help="Output plot file", default="plot.png")
     parser.add_argument('-t', '--title', help="Title of plot",
                         default="Assembly statistics")
+    parser.add_argument("-b", "--busco", default = "Nothing", help = "BUSCO json file for score plotting")
 
     args = parser.parse_args(arguments)
 
